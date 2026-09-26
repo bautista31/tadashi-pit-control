@@ -630,19 +630,23 @@
   var EXPLAIN = {
     SecurityError: 'Bluetooth bloqueado por el permissions-policy del iframe. La página tiene que abrirse como documento propio (GitHub Pages), no embebida.',
     NotAllowedError: 'Permiso denegado. Revisá que el sitio tenga permiso de Bluetooth en Chrome (candado → Permisos).',
-    NotFoundError: 'No apareció ningún dispositivo, o cerraste el selector. Si el selector quedó vacío: el robot no está anunciando, o falta prender la Ubicación.',
+    NotFoundError: 'No apareció ningún dispositivo, o cerraste el selector. Si el selector quedó vacío: el robot no está anunciando con ese nombre, o falta prender la Ubicación.',
+    NotFoundErrorGatt: 'Ese dispositivo no tiene el servicio 180F: no es el robot. Probá con otro de la lista.',
     TypeError: 'Filtro de búsqueda inválido.',
     NetworkError: 'Se cayó la conexión GATT en el medio. Probá de nuevo.'
   };
+
+  var stage = 'pick';   // pick = eligiendo dispositivo, gatt = ya conectando
 
   function fail(err) {
     var name = (err && err.name) || '';
     var msg = (err && err.message) || String(err);
     if (/User cancelled/i.test(msg)) { setStatus('Cancelado', ''); return; }
     log(name ? name + ': ' + msg : msg, 'sys');
-    if (EXPLAIN[name]) {
-      log(EXPLAIN[name], 'sys');
-      $('diagHint').textContent = EXPLAIN[name];
+    var key = (name === 'NotFoundError' && stage === 'gatt') ? 'NotFoundErrorGatt' : name;
+    if (EXPLAIN[key]) {
+      log(EXPLAIN[key], 'sys');
+      $('diagHint').textContent = EXPLAIN[key];
     }
     setStatus(name || 'Error', 'off');
     try { document.querySelector('details.log').open = true; } catch (e) {}
@@ -702,9 +706,12 @@
     var opts = any
       ? { acceptAllDevices: true, optionalServices: [SVC] }
       : { filters: [{ namePrefix: 'MiniSumo' }], optionalServices: [SVC] };
+    stage = 'pick';
     log(any ? 'escaneando todo' : 'escaneando namePrefix=MiniSumo', 'sys');
     navigator.bluetooth.requestDevice(opts).then(function (d) {
       dev = d;
+      stage = 'gatt';
+      log('elegido: ' + (d.name || '(sin nombre)') + ' id=' + d.id, 'sys');
       $('devName').textContent = (d.name || 'sin nombre') + ' · 180F/2A19';
       d.addEventListener('gattserverdisconnected', onDisconnect);
       setStatus('Conectando…', '');
