@@ -1,0 +1,749 @@
+<title>Tadashi Pit Control</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    --bg: #eef1f5;
+    --surface: #ffffff;
+    --surface-2: #e5eaf1;
+    --line: #d2dae4;
+    --line-strong: #b3bfcd;
+    --text: #0e141c;
+    --muted: #5b6674;
+    --accent: #0057e0;
+    --accent-ink: #ffffff;
+    --accent-soft: #dbe7ff;
+    --ok: #16804c;
+    --ok-soft: #d6f0e2;
+    --warn: #9a5800;
+    --warn-soft: #ffeccd;
+    --danger: #c22a20;
+    --danger-soft: #ffdfdc;
+    --shadow: 0 1px 2px rgba(14, 20, 28, .06), 0 8px 24px -12px rgba(14, 20, 28, .18);
+    --r: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --surface: #141a22;
+      --surface-2: #1c242e;
+      --line: #263039;
+      --line-strong: #3a4754;
+      --text: #e6ecf3;
+      --muted: #8895a6;
+      --accent: #4d94ff;
+      --accent-ink: #06101f;
+      --accent-soft: #14263d;
+      --ok: #45d18b;
+      --ok-soft: #10281d;
+      --warn: #f0ae4e;
+      --warn-soft: #2c2010;
+      --danger: #ff6a5c;
+      --danger-soft: #331512;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 28px -14px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b0f14;
+    --surface: #141a22;
+    --surface-2: #1c242e;
+    --line: #263039;
+    --line-strong: #3a4754;
+    --text: #e6ecf3;
+    --muted: #8895a6;
+    --accent: #4d94ff;
+    --accent-ink: #06101f;
+    --accent-soft: #14263d;
+    --ok: #45d18b;
+    --ok-soft: #10281d;
+    --warn: #f0ae4e;
+    --warn-soft: #2c2010;
+    --danger: #ff6a5c;
+    --danger-soft: #331512;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 28px -14px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace; }
+
+  /* ---------- top bar ---------- */
+  .bar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .brand { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+  .brand b {
+    font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .brand span { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+    background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
+  }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+  .pill.on { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+  .pill.off { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .pill.on i { animation: beat 1.8s ease-in-out infinite; }
+  @keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  button {
+    font: inherit; font-weight: 600; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--line-strong);
+    border-radius: var(--r); padding: 9px 14px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .42; cursor: not-allowed; }
+  .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .danger { background: var(--danger); color: #fff; border-color: transparent; }
+  .ghost { background: transparent; }
+
+  /* ---------- layout ---------- */
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 132px; }
+  section { margin-bottom: 18px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 8px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; box-shadow: var(--shadow);
+  }
+  .card h2 { margin: 0 0 6px; font-size: 17px; font-weight: 700; text-wrap: balance; }
+  .card p { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
+  .card p:last-child { margin-bottom: 0; }
+
+  /* ---------- phase rail ---------- */
+  .rail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
+  .step {
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+    padding: 7px 8px 8px; text-align: left; opacity: .55;
+  }
+  .step.active { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+  .step.done { opacity: 1; }
+  .step-n { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+  .step.active .step-n { color: var(--accent); }
+  .step-t { font-size: 12px; font-weight: 600; line-height: 1.25; }
+
+  /* ---------- option grid ---------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 400px) { .grid { grid-template-columns: 1fr; } }
+  .opt {
+    display: grid; grid-template-columns: 26px 1fr; gap: 9px; align-items: start;
+    text-align: left; padding: 9px 10px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r); font-weight: 500;
+  }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .opt-n {
+    font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700;
+    line-height: 20px; text-align: center; border-radius: 5px;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .opt[aria-pressed="true"] .opt-n { background: var(--accent); color: var(--accent-ink); }
+  .opt-name { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+  .opt-desc { font-size: 11.5px; color: var(--muted); line-height: 1.3; margin-top: 2px; }
+  .opt-desc.flag { color: var(--warn); }
+  .led {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-left: 5px; vertical-align: 1px; box-shadow: 0 0 0 1px rgba(128, 140, 155, .45);
+  }
+
+  /* ---------- telemetry ---------- */
+  .tele { display: grid; gap: 7px; }
+  .row { display: grid; grid-template-columns: 74px 1fr 66px; gap: 9px; align-items: center; }
+  .row-lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .track { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .fill { height: 100%; border-radius: 999px; width: 0; background: var(--line-strong); transition: width .12s linear; }
+  .fill.z-crit { background: var(--danger); }
+  .fill.z-near { background: var(--warn); }
+  .fill.z-far { background: var(--accent); }
+  .row-val { font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .floor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .chip {
+    border-radius: 8px; padding: 8px 10px; border: 1px solid var(--line);
+    background: var(--surface-2); font-size: 12px; font-weight: 600;
+  }
+  .chip.edge { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .chip small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; font-weight: 700; }
+
+  /* ---------- countdown ---------- */
+  .count { text-align: center; padding: 18px 0 6px; }
+  .count b {
+    display: block; font-family: "JetBrains Mono", monospace; font-size: 62px;
+    font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- log ---------- */
+  details.log { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  details.log > summary {
+    cursor: pointer; padding: 10px 14px; font-size: 12px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  pre.log-body {
+    margin: 0; padding: 0 14px 12px; max-height: 190px; overflow: auto;
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word; color: var(--muted);
+  }
+
+  /* ---------- bottom bar ---------- */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .dock-in { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; align-items: stretch; }
+  .dock button { padding: 13px 16px; font-size: 15px; }
+  .dock .primary { flex: 1; }
+  .note { font-size: 11px; color: var(--muted); margin: 7px 0 0; text-align: center; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin: 0; }
+  .kv dt { font-family: "JetBrains Mono", monospace; color: var(--muted); }
+  .kv dd { margin: 0; }
+  .diag dd { font-weight: 600; }
+  .diag dd.yes { color: var(--ok); }
+  .diag dd.no { color: var(--danger); }
+  .diag dd.meh { color: var(--warn); }
+  ol.boot { margin: 0; padding-left: 20px; font-size: 13.5px; }
+  ol.boot li { margin-bottom: 6px; }
+  ol.boot li:last-child { margin-bottom: 0; }
+  .warn-box {
+    background: var(--warn-soft); color: var(--warn); border-radius: 8px;
+    padding: 9px 11px; font-size: 12.5px; font-weight: 500;
+  }
+  a { color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="bar">
+  <div class="brand">
+    <b>Tadashi</b>
+    <span class="mono" id="devName">MiniSumo-C3 · 180F/2A19</span>
+  </div>
+  <span class="pill off" id="status"><i></i><span id="statusText">Sin conectar</span></span>
+  <button id="btnConn" class="primary">Conectar</button>
+</div>
+
+<main>
+  <div class="rail" id="rail">
+    <div class="step" data-step="e1"><div class="step-n">01</div><div class="step-t">Largada&nbsp;E1</div></div>
+    <div class="step" data-step="e2"><div class="step-n">02</div><div class="step-t">Búsqueda&nbsp;E2</div></div>
+    <div class="step" data-step="run"><div class="step-n">03</div><div class="step-t">Combate</div></div>
+  </div>
+
+  <!-- DESCONECTADO -->
+  <section id="viewIdle">
+    <div class="card">
+      <h2>Encendé el robot con el botón apretado</h2>
+      <p>El firmware solo levanta el stack BLE si <span class="mono">PIN_BOTON</span> (GPIO21) está en LOW durante el arranque. Si lo encendés con el botón suelto entra en «reinicio en combate»: sin Bluetooth, con E1=0 y E2=2 fijas, y pelea al instante.</p>
+      <ol class="boot">
+        <li>Mantené el botón apretado y dale corriente.</li>
+        <li>Esperá los <strong>2 destellos celestes</strong> (sensores OK).</li>
+        <li>Soltá el botón y tocá <strong>Conectar</strong> acá.</li>
+      </ol>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <p class="eyebrow">Protocolo</p>
+      <dl class="kv">
+        <dt>Nombre</dt><dd>MiniSumo-C3</dd>
+        <dt>Servicio</dt><dd>0x180F (Battery Service)</dd>
+        <dt>Caract.</dt><dd>0x2A19 · Write + Notify</dd>
+        <dt>Comando</dt><dd>1 byte: 0–12 estrategia, 13 = OK</dd>
+      </dl>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <p class="eyebrow">Diagnóstico</p>
+      <dl class="kv diag" id="diag"></dl>
+      <p class="note" style="text-align:left;margin-top:10px" id="diagHint"></p>
+      <button class="ghost" id="btnAny" style="margin-top:10px;width:100%">Buscar cualquier dispositivo</button>
+      <p class="note" style="text-align:left">Usalo si el robot no aparece filtrando por nombre: lista todo lo que esté anunciando y elegís a mano.</p>
+    </div>
+  </section>
+
+  <!-- E1 / E2 -->
+  <section id="viewPick" hidden>
+    <p class="eyebrow" id="pickTitle">Estrategia de largada · E1</p>
+    <div class="grid" id="optGrid"></div>
+  </section>
+
+  <!-- CUENTA DE 5 s -->
+  <section id="viewCount" hidden>
+    <div class="card count">
+      <p class="eyebrow">Espera reglamentaria</p>
+      <b class="mono" id="countNum">5.0</b>
+      <p style="margin-top:10px">El robot ejecuta la largada <strong id="countE1">E1</strong> al llegar a cero.</p>
+      <div class="warn-box"><span class="mono">TIEMPO_ESPERA_LARGADA = 4990 ms</span> — 10 ms por debajo de los 5 s reglamentarios. Arrancar antes es falta.</div>
+    </div>
+  </section>
+
+  <!-- COMBATE / TELEMETRÍA -->
+  <section id="viewRun" hidden>
+    <div class="card" id="cardCombat" hidden>
+      <h2>En combate</h2>
+      <p>El firmware ejecutó <span class="mono" id="runCfg">E1 / E2</span> y apagó el Bluetooth (<span class="mono">APAGAR_BT_EN_COMBATE true</span>). Desde acá ya no se puede frenar: agarrá el robot o cortale la alimentación.</p>
+    </div>
+
+    <div class="card" id="cardTele" hidden>
+      <h2>Telemetría</h2>
+      <p>Modo mapeo: los motores quedan muertos y el robot manda lecturas cada 250 ms. El STOP sí funciona acá.</p>
+      <div class="tele">
+        <div class="row"><div class="row-lab">Frente izq</div><div class="track"><div class="fill" id="fFI"></div></div><div class="row-val" id="vFI">—</div></div>
+        <div class="row"><div class="row-lab">Frente der</div><div class="track"><div class="fill" id="fFD"></div></div><div class="row-val" id="vFD">—</div></div>
+        <div class="row"><div class="row-lab">Lateral izq</div><div class="track"><div class="fill" id="fLI"></div></div><div class="row-val" id="vLI">—</div></div>
+        <div class="row"><div class="row-lab">Lateral der</div><div class="track"><div class="fill" id="fLD"></div></div><div class="row-val" id="vLD">—</div></div>
+      </div>
+      <div class="floor">
+        <div class="chip" id="pI"><small>Piso izq</small><span>—</span></div>
+        <div class="chip" id="pD"><small>Piso der</small><span>—</span></div>
+      </div>
+      <p class="note" style="text-align:left">Zonas del firmware — frontal: crítico &lt;160, cerca &lt;300, lejano &lt;400 mm. Lateral: cerca &lt;250, lejano &lt;600 mm. <span class="mono">8190</span> = fuera de rango. «Frente izq» es el sensor sin XSHUT, con los <span class="mono">-25 mm</span> de <span class="mono">DIFERENCIA_LECTURA</span> ya aplicados.</p>
+    </div>
+
+    <div class="card" id="cardStopped" hidden>
+      <h2>Stop total</h2>
+      <p>El robot entró en <span class="mono">bucleEmergencia()</span>: motores en cero y LED rojo intermitente. Solo sale con un reset físico.</p>
+    </div>
+  </section>
+
+  <section>
+    <details class="log">
+      <summary>Consola del robot</summary>
+      <pre class="log-body mono" id="log">Esperando conexión…</pre>
+    </details>
+  </section>
+</main>
+
+<div class="dock">
+  <div class="dock-in">
+    <button class="primary" id="btnOk" disabled>Conectá primero</button>
+    <button class="danger" id="btnStop" hidden>STOP</button>
+  </div>
+  <p class="note" id="dockNote">El STOP manda el byte 0. Solo llega si el Bluetooth sigue vivo, o sea únicamente en modo telemetría.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SVC  = '0000180f-0000-1000-8000-00805f9b34fb';
+  var CHAR = '00002a19-0000-1000-8000-00805f9b34fb';
+  var SPACER = 255;           // el firmware lo descarta, pero resetea ultimoDato
+  var SPACER_GAP = 140;       // ms entre espaciador y comando real
+
+  var LED = ['#050505','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF',
+             '#FF6400','#64FF00','#FF0064','#6400FF','#00FF64','#0064FF','#FFFFFF'];
+
+  var E1 = [
+    ['GiroIzq Largo',        'Giro izq 180 PWM · 50 ms'],
+    ['GiroIzq Corto',        'Giro izq 180 PWM · 35 ms'],
+    ['Avance y Curva',       'Avanza 150 ms, curva izq 250 ms'],
+    ['GiroIzq Medio',        'Giro izq 180 PWM · 45 ms'],
+    ['Avanza golpe + 135',   'Avance 200 · freno · giro izq 75 ms'],
+    ['Retro golpe + 45',     'Retro 200 · freno · giro izq 30 ms'],
+    ['MediaLuna Inversa',    'Avanza 150 ms, curva der 250 ms'],
+    ['90 izq + Av + 45 izq', 'Giro 50 · avance 120 · giro 35 ms'],
+    ['90 izq + Av + 45 der', 'Giro 50 · avance 120 · giro der 18 ms'],
+    ['Giro Der 45',          'Giro der 180 PWM · 18 ms'],
+    ['Giro 180',             'Giro izq 180 PWM · 67 ms'],
+    ['Reversa suave + 45',   'Retro 120 · 90 ms · giro izq 30 ms'],
+    ['MODO MAPEO',           'Queda quieto. Con E2=12 → telemetría']
+  ];
+
+  var E2 = [
+    ['Búsqueda Izquierda',  'Pulsos giro izq 90 PWM / 15 ms'],
+    ['Búsqueda Derecha',    'Pulsos giro der 70 PWM / 10 ms'],
+    ['Avanza y Frena',      'Avance 35 PWM 250 ms, pausa 250 ms'],
+    ['Patrulla Arco',       'Giros izq/der con pausas de 1 s'],
+    ['Giro Amplio Izq',     'Arco 15/60 durante 5 s'],
+    ['Giro Amplio Der',     'Arco 60/15 durante 5 s'],
+    ['Círculo Corto Izq',   'Arco 15/55 a pulsos de 220 ms'],
+    ['Círculo Corto Der',   'Arco 55/15 a pulsos de 220 ms'],
+    ['Círculo Rápido Izq',  'Arco 60/200 a pulsos de 50 ms'],
+    ['Círculo Rápido Der',  'Arco 200/60 a pulsos de 50 ms'],
+    ['Barre Frente',        'Una oruga por vez, 500 ms cada lado'],
+    ['Emboscada',           '⚠ El firmware solo frena 30 s: no se mueve', 1],
+    ['Kamikaze',            '⚠ En realidad avanza a 25 PWM por 10 s', 1]
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var dev = null, chr = null;
+  var phase = 'idle';          // idle | e1 | e2 | count | run | tele | stopped
+  var sel = { e1: 0, e2: 2 };  // el firmware precarga estas al conectar
+  var lastByte = -1;
+  var rx = '';
+  var countTimer = null, stopTimer = null;
+
+  /* ---------------- log ---------------- */
+  function log(line, kind) {
+    var t = new Date().toTimeString().slice(0, 8);
+    var el = $('log');
+    if (el.textContent.indexOf('Esperando conexión') === 0) el.textContent = '';
+    el.textContent += t + (kind === 'tx' ? '  → ' : kind === 'sys' ? '  ·  ' : '  ← ') + line + '\n';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* ---------------- UI ---------------- */
+  function setStatus(text, cls) {
+    var p = $('status');
+    p.className = 'pill ' + (cls || '');
+    $('statusText').textContent = text;
+  }
+
+  function renderRail() {
+    var order = { e1: 0, e2: 1, count: 2, run: 2, tele: 2, stopped: 2 };
+    var i = order[phase];
+    [].forEach.call($('rail').children, function (step, n) {
+      step.classList.toggle('active', i === n);
+      step.classList.toggle('done', i !== undefined && n < i);
+    });
+  }
+
+  function renderGrid() {
+    var list = phase === 'e1' ? E1 : E2;
+    var cur = phase === 'e1' ? sel.e1 : sel.e2;
+    $('pickTitle').textContent = phase === 'e1'
+      ? 'Estrategia de largada · E1'
+      : 'Estrategia de búsqueda · E2';
+    var g = $('optGrid');
+    g.textContent = '';
+    list.forEach(function (item, n) {
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(n === cur));
+      var num = document.createElement('span');
+      num.className = 'opt-n';
+      num.textContent = n;
+      var box = document.createElement('span');
+      var name = document.createElement('span');
+      name.className = 'opt-name';
+      name.textContent = item[0];
+      var led = document.createElement('span');
+      led.className = 'led';
+      led.style.background = LED[n];
+      led.title = 'Color del NeoPixel al seleccionarla';
+      name.appendChild(led);
+      var d = document.createElement('span');
+      d.className = 'opt-desc' + (item[2] ? ' flag' : '');
+      d.textContent = item[1];
+      box.appendChild(name);
+      box.appendChild(d);
+      b.appendChild(num);
+      b.appendChild(box);
+      b.onclick = function () { pick(n); };
+      g.appendChild(b);
+    });
+  }
+
+  function render() {
+    var connected = !!chr;
+    $('viewIdle').hidden  = phase !== 'idle';
+    $('viewPick').hidden  = !(phase === 'e1' || phase === 'e2');
+    $('viewCount').hidden = phase !== 'count';
+    $('viewRun').hidden   = !(phase === 'run' || phase === 'tele' || phase === 'stopped');
+    $('cardCombat').hidden  = phase !== 'run';
+    $('cardTele').hidden    = phase !== 'tele';
+    $('cardStopped').hidden = phase !== 'stopped';
+
+    $('btnConn').textContent = connected ? 'Cortar' : 'Conectar';
+    $('btnConn').className = connected ? 'ghost' : 'primary';
+
+    var ok = $('btnOk');
+    if (phase === 'e1') {
+      ok.hidden = false; ok.disabled = false;
+      ok.textContent = 'Fijar E1 = ' + sel.e1 + ' →';
+    } else if (phase === 'e2') {
+      ok.hidden = false; ok.disabled = false;
+      ok.textContent = (sel.e1 === 12 && sel.e2 === 12)
+        ? 'Arrancar telemetría'
+        : 'Confirmar y contar 5 s';
+    } else {
+      ok.hidden = false; ok.disabled = true;
+      ok.textContent = connected ? 'Sin acciones en esta fase' : 'Conectá primero';
+    }
+
+    $('btnStop').hidden = !(connected && (phase === 'tele' || phase === 'run'));
+
+    $('dockNote').textContent =
+      phase === 'e2' && !(sel.e1 === 12 && sel.e2 === 12)
+        ? 'Al confirmar, el robot bloquea 4990 ms y después apaga el Bluetooth. La conexión se va a cortar: es lo esperado.'
+        : phase === 'tele'
+          ? 'El STOP manda el byte 0 y el robot entra en bucleEmergencia() hasta el próximo reset.'
+          : 'El STOP manda el byte 0. Solo llega si el Bluetooth sigue vivo, o sea únicamente en modo telemetría.';
+
+    if (phase === 'e1' || phase === 'e2') renderGrid();
+    renderRail();
+  }
+
+  /* ---------------- envío ---------------- */
+  function writeByte(n) {
+    if (!chr) return Promise.reject(new Error('sin conexión'));
+    var buf = new Uint8Array([n]);
+    var p = chr.writeValueWithResponse
+      ? chr.writeValueWithResponse(buf)
+      : chr.writeValue(buf);
+    return p.then(function () {
+      lastByte = n;
+      log(n + (n === SPACER ? '  (espaciador)' : ''), 'tx');
+    });
+  }
+
+  // El firmware ignora un byte repetido (dato != ultimoDato): metemos el espaciador.
+  function send(n) {
+    if (lastByte !== n) return writeByte(n);
+    return writeByte(SPACER)
+      .then(function () { return new Promise(function (r) { setTimeout(r, SPACER_GAP); }); })
+      .then(function () { return writeByte(n); });
+  }
+
+  function pick(n) {
+    var key = phase === 'e1' ? 'e1' : 'e2';
+    send(n).then(function () {
+      sel[key] = n;
+      render();
+    }).catch(fail);
+  }
+
+  function confirm() {
+    var wasE2 = phase === 'e2';
+    var tele = sel.e1 === 12 && sel.e2 === 12;
+    send(13).then(function () {
+      if (!wasE2) {
+        phase = 'e2';
+        lastByte = -1;                 // el firmware resetea ultimoDato en cada OK
+        render();
+      } else if (tele) {
+        phase = 'tele';
+        lastByte = -1;
+        render();
+      } else {
+        $('runCfg').textContent = 'E1=' + sel.e1 + ' / E2=' + sel.e2;
+        $('countE1').textContent = 'E1=' + sel.e1 + ' (' + E1[sel.e1][0] + ')';
+        startCountdown();
+      }
+    }).catch(fail);
+  }
+
+  function startCountdown() {
+    phase = 'count';
+    render();
+    var end = Date.now() + 4990;
+    clearInterval(countTimer);
+    countTimer = setInterval(function () {
+      var left = Math.max(0, end - Date.now());
+      $('countNum').textContent = (left / 1000).toFixed(1);
+      if (left === 0) {
+        clearInterval(countTimer);
+        phase = 'run';
+        log('largada ejecutada, el robot apaga el BT', 'sys');
+        render();
+      }
+    }, 80);
+  }
+
+  function stop() {
+    var tries = 0;
+    clearInterval(stopTimer);
+    var shoot = function () {
+      tries++;
+      writeByte(0).catch(function () {});
+      if (tries >= 4) clearInterval(stopTimer);
+    };
+    shoot();
+    // Reintenta con espaciador: en RUNNING el loop puede tardar en leer.
+    stopTimer = setInterval(function () {
+      if (phase === 'stopped') { clearInterval(stopTimer); return; }
+      writeByte(SPACER).then(function () { setTimeout(shoot, SPACER_GAP); }).catch(function () {});
+    }, 700);
+  }
+
+  /* ---------------- notificaciones ---------------- */
+  function onNotify(e) {
+    var txt = new TextDecoder().decode(e.target.value);
+    txt.split('\n').forEach(function (l) { if (l.trim()) log(l.trim()); });
+    rx = (rx + txt).slice(-600);
+
+    if (/STOP TOTAL/.test(rx)) { rx = ''; clearInterval(stopTimer); phase = 'stopped'; render(); return; }
+    if (/>>> TELEMETRIA/.test(rx)) { rx = ''; phase = 'tele'; lastByte = -1; render(); return; }
+    if (/INICIANDO 5 SEG/.test(rx)) { rx = ''; if (phase !== 'count') startCountdown(); return; }
+    if (/E1 FIJADA/.test(rx))  { rx = ''; if (phase === 'e1') { phase = 'e2'; lastByte = -1; render(); } return; }
+    if (/>>> CONECTADO/.test(rx)) { rx = ''; if (phase === 'idle') { phase = 'e1'; render(); } return; }
+
+    parseTelemetry();
+  }
+
+  function parseTelemetry() {
+    var m;
+    if ((m = /PISO:\s*I\[(-?\d+)\]\s*D\[(-?\d+)\]/.exec(rx))) {
+      floor('pI', +m[1]); floor('pD', +m[2]);
+    }
+    if ((m = /FRONTAL:\s*I\[(-?\d+)\]\s*D\[(-?\d+)\]/.exec(rx))) {
+      bar('FI', +m[1], 160, 300, 400); bar('FD', +m[2], 160, 300, 400);
+    }
+    if ((m = /LATERAL:\s*I\[(-?\d+)\]\s*D\[(-?\d+)\]/.exec(rx))) {
+      bar('LI', +m[1], 250, 250, 600); bar('LD', +m[2], 250, 250, 600);
+    }
+  }
+
+  function bar(id, mm, crit, near, far) {
+    var v = $('v' + id), f = $('f' + id);
+    if (!isFinite(mm) || mm <= 25 || mm >= far) {
+      v.textContent = '—';
+      f.style.width = '0%';
+      f.className = 'fill';
+      return;
+    }
+    v.textContent = mm + ' mm';
+    f.style.width = Math.max(4, 100 - (mm / far) * 100).toFixed(0) + '%';
+    f.className = 'fill ' + (mm < crit ? 'z-crit' : mm < near ? 'z-near' : 'z-far');
+  }
+
+  function floor(id, val) {
+    var el = $(id);
+    var edge = val === 0;               // UMBRAL_PISO = 0 → borde detectado
+    el.className = 'chip' + (edge ? ' edge' : '');
+    el.lastElementChild.textContent = edge ? 'LÍNEA' : 'Tatami';
+  }
+
+  /* ---------------- conexión ---------------- */
+  var EXPLAIN = {
+    SecurityError: 'Bluetooth bloqueado por el permissions-policy del iframe. La página tiene que abrirse como documento propio (GitHub Pages), no embebida.',
+    NotAllowedError: 'Permiso denegado. Revisá que el sitio tenga permiso de Bluetooth en Chrome (candado → Permisos).',
+    NotFoundError: 'No apareció ningún dispositivo, o cerraste el selector. Si el selector quedó vacío: el robot no está anunciando, o falta prender la Ubicación.',
+    TypeError: 'Filtro de búsqueda inválido.',
+    NetworkError: 'Se cayó la conexión GATT en el medio. Probá de nuevo.'
+  };
+
+  function fail(err) {
+    var name = (err && err.name) || '';
+    var msg = (err && err.message) || String(err);
+    if (/User cancelled/i.test(msg)) { setStatus('Cancelado', ''); return; }
+    log(name ? name + ': ' + msg : msg, 'sys');
+    if (EXPLAIN[name]) {
+      log(EXPLAIN[name], 'sys');
+      $('diagHint').textContent = EXPLAIN[name];
+    }
+    setStatus(name || 'Error', 'off');
+    try { document.querySelector('details.log').open = true; } catch (e) {}
+  }
+
+  function diagnose() {
+    var d = $('diag');
+    d.textContent = '';
+    var add = function (k, v, cls) {
+      var dt = document.createElement('dt'); dt.textContent = k;
+      var dd = document.createElement('dd'); dd.textContent = v; dd.className = cls || '';
+      d.appendChild(dt); d.appendChild(dd);
+    };
+
+    var hasBt = !!navigator.bluetooth;
+    add('API', hasBt ? 'Web Bluetooth presente' : 'no existe en este navegador', hasBt ? 'yes' : 'no');
+
+    var framed = false;
+    try { framed = window.top !== window.self; } catch (e) { framed = true; }
+    add('Contexto', framed ? 'dentro de un iframe' : 'documento propio', framed ? 'meh' : 'yes');
+
+    var allowed = null;
+    try {
+      if (document.featurePolicy && document.featurePolicy.allowsFeature) {
+        allowed = document.featurePolicy.allowsFeature('bluetooth');
+      }
+    } catch (e) {}
+    if (allowed !== null) {
+      add('Permiso', allowed ? 'bluetooth habilitado' : 'bluetooth BLOQUEADO acá', allowed ? 'yes' : 'no');
+    }
+    add('Seguro', window.isSecureContext ? 'https / contexto seguro' : 'contexto NO seguro', window.isSecureContext ? 'yes' : 'no');
+
+    if (!hasBt) {
+      $('diagHint').textContent = 'Usá Chrome en Android. Safari de iPhone no tiene Web Bluetooth; ahí necesitás el navegador Bluefy.';
+      $('btnAny').disabled = true;
+      $('btnConn').disabled = true;
+      return;
+    }
+    if (allowed === false) {
+      $('diagHint').textContent = 'Este iframe no permite Bluetooth. Hay que abrir la página como documento propio: subí el .html a GitHub Pages y entrá por esa URL.';
+      return;
+    }
+    if (navigator.bluetooth.getAvailability) {
+      navigator.bluetooth.getAvailability().then(function (av) {
+        add('Adaptador', av ? 'disponible' : 'no se detecta Bluetooth', av ? 'yes' : 'no');
+        if (!av) $('diagHint').textContent = 'El celu no reporta adaptador Bluetooth. Prendelo y recargá.';
+        else if (!$('diagHint').textContent) {
+          $('diagHint').textContent = 'Todo en orden de este lado. Prendé Bluetooth y Ubicación, encendé el robot con el botón apretado y tocá Conectar.';
+        }
+      }).catch(function () {});
+    }
+  }
+
+  function connect(any) {
+    if (!navigator.bluetooth) { fail(new Error('Este navegador no tiene Web Bluetooth.')); return; }
+    setStatus('Buscando…', '');
+    var opts = any
+      ? { acceptAllDevices: true, optionalServices: [SVC] }
+      : { filters: [{ namePrefix: 'MiniSumo' }], optionalServices: [SVC] };
+    log(any ? 'escaneando todo' : 'escaneando namePrefix=MiniSumo', 'sys');
+    navigator.bluetooth.requestDevice(opts).then(function (d) {
+      dev = d;
+      $('devName').textContent = (d.name || 'sin nombre') + ' · 180F/2A19';
+      d.addEventListener('gattserverdisconnected', onDisconnect);
+      setStatus('Conectando…', '');
+      return d.gatt.connect();
+    }).then(function (server) {
+      return server.getPrimaryService(SVC);
+    }).then(function (s) {
+      return s.getCharacteristic(CHAR);
+    }).then(function (c) {
+      chr = c;
+      c.addEventListener('characteristicvaluechanged', onNotify);
+      return c.startNotifications();
+    }).then(function () {
+      setStatus('Conectado', 'on');
+      log('GATT listo, notificaciones activas', 'sys');
+      lastByte = -1;
+      if (phase === 'idle') phase = 'e1';
+      render();
+    }).catch(fail);
+  }
+
+  function onDisconnect() {
+    chr = null;
+    clearInterval(stopTimer);
+    setStatus('Desconectado', 'off');
+    log('el robot cerró la conexión', 'sys');
+    if (phase === 'e1' || phase === 'e2' || phase === 'idle') phase = 'idle';
+    render();
+  }
+
+  $('btnConn').onclick = function () {
+    if (chr) { try { dev.gatt.disconnect(); } catch (e) {} onDisconnect(); }
+    else connect(false);
+  };
+  $('btnAny').onclick = function () { connect(true); };
+  $('btnOk').onclick = confirm;
+  $('btnStop').onclick = stop;
+
+  diagnose();
+  render();
+})();
+</script>
