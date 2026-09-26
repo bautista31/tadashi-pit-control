@@ -225,6 +225,9 @@
   .diag dd.yes { color: var(--ok); }
   .diag dd.no { color: var(--danger); }
   .diag dd.meh { color: var(--warn); }
+  .scan-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .scan-modes button { font-size: 13px; padding: 8px 6px; }
+  .match { color: var(--ok); font-weight: 600; }
   ol.boot { margin: 0; padding-left: 20px; font-size: 13.5px; }
   ol.boot li { margin-bottom: 6px; }
   ol.boot li:last-child { margin-bottom: 0; }
@@ -276,8 +279,12 @@
       <p class="eyebrow">Diagnóstico</p>
       <dl class="kv diag" id="diag"></dl>
       <p class="note" style="text-align:left;margin-top:10px" id="diagHint"></p>
-      <button class="ghost" id="btnAny" style="margin-top:10px;width:100%">Filtrar por nombre MiniSumo-C3</button>
-      <p class="note" style="text-align:left">Este robot anuncia <strong>sin nombre</strong>, así que Conectar lista todos los dispositivos y elegís a mano. Si algún día arreglás el advertising en el firmware, usá este botón.</p>
+      <p class="note" style="text-align:left;margin-top:12px"><strong>Conectar</strong> lista todos los dispositivos, porque hoy el robot anuncia sin nombre. Estos dos filtros solo sirven después de arreglar el advertising en el firmware:</p>
+      <div class="scan-modes">
+        <button class="ghost" id="btnSvc">Filtrar 180F</button>
+        <button class="ghost" id="btnName">Filtrar por nombre</button>
+      </div>
+      <p class="note" style="text-align:left" id="lastDev"></p>
     </div>
   </section>
 
@@ -700,18 +707,38 @@
     }
   }
 
-  function connect(any) {
+  var LS_KEY = 'tadashi.deviceId';
+
+  function remembered() {
+    try { return localStorage.getItem(LS_KEY); } catch (e) { return null; }
+  }
+  function remember(id) {
+    try { localStorage.setItem(LS_KEY, id); } catch (e) {}
+  }
+  function showRemembered() {
+    var id = remembered();
+    $('lastDev').textContent = id
+      ? 'Último robot que funcionó: ' + id.slice(0, 10) + '… — al elegir uno te aviso si es el mismo.'
+      : '';
+  }
+
+  function connect(mode) {
     if (!navigator.bluetooth) { fail(new Error('Este navegador no tiene Web Bluetooth.')); return; }
     setStatus('Buscando…', '');
-    var opts = any
-      ? { acceptAllDevices: true, optionalServices: [SVC] }
-      : { filters: [{ namePrefix: 'MiniSumo' }], optionalServices: [SVC] };
+    var opts =
+      mode === 'name'    ? { filters: [{ namePrefix: 'MiniSumo' }], optionalServices: [SVC] } :
+      mode === 'service' ? { filters: [{ services: [SVC] }] } :
+                           { acceptAllDevices: true, optionalServices: [SVC] };
     stage = 'pick';
-    log(any ? 'escaneando todo' : 'escaneando namePrefix=MiniSumo', 'sys');
+    log('escaneando: ' + (mode === 'name' ? 'namePrefix=MiniSumo'
+                        : mode === 'service' ? 'servicio 180F' : 'todos'), 'sys');
     navigator.bluetooth.requestDevice(opts).then(function (d) {
       dev = d;
       stage = 'gatt';
+      var prev = remembered();
       log('elegido: ' + (d.name || '(sin nombre)') + ' id=' + d.id, 'sys');
+      if (prev && prev === d.id) log('es el mismo robot de la última vez', 'sys');
+      else if (prev) log('OJO: es OTRO dispositivo, no el de la última vez', 'sys');
       $('devName').textContent = (d.name || 'sin nombre') + ' · 180F/2A19';
       d.addEventListener('gattserverdisconnected', onDisconnect);
       setStatus('Conectando…', '');
@@ -727,6 +754,8 @@
     }).then(function () {
       setStatus('Conectado', 'on');
       log('GATT listo, notificaciones activas', 'sys');
+      remember(dev.id);           // tiene 180F: es el robot, lo memorizamos
+      showRemembered();
       lastByte = -1;
       if (phase === 'idle') phase = 'e1';
       render();
@@ -744,12 +773,14 @@
 
   $('btnConn').onclick = function () {
     if (chr) { try { dev.gatt.disconnect(); } catch (e) {} onDisconnect(); }
-    else connect(true);          // este robot anuncia sin nombre: listamos todo
+    else connect('all');         // este robot anuncia sin nombre: listamos todo
   };
-  $('btnAny').onclick = function () { connect(false); };
+  $('btnSvc').onclick  = function () { connect('service'); };
+  $('btnName').onclick = function () { connect('name'); };
   $('btnOk').onclick = confirm;
   $('btnStop').onclick = stop;
 
+  showRemembered();
   diagnose();
   render();
 })();
