@@ -276,8 +276,8 @@
       <p class="eyebrow">Diagnóstico</p>
       <dl class="kv diag" id="diag"></dl>
       <p class="note" style="text-align:left;margin-top:10px" id="diagHint"></p>
-      <button class="ghost" id="btnAny" style="margin-top:10px;width:100%">Buscar cualquier dispositivo</button>
-      <p class="note" style="text-align:left">Usalo si el robot no aparece filtrando por nombre: lista todo lo que esté anunciando y elegís a mano.</p>
+      <button class="ghost" id="btnAny" style="margin-top:10px;width:100%">Filtrar por nombre MiniSumo-C3</button>
+      <p class="note" style="text-align:left">Este robot anuncia <strong>sin nombre</strong>, así que Conectar lista todos los dispositivos y elegís a mano. Si algún día arreglás el advertising en el firmware, usá este botón.</p>
     </div>
   </section>
 
@@ -744,9 +744,9 @@
 
   $('btnConn').onclick = function () {
     if (chr) { try { dev.gatt.disconnect(); } catch (e) {} onDisconnect(); }
-    else connect(false);
+    else connect(true);          // este robot anuncia sin nombre: listamos todo
   };
-  $('btnAny').onclick = function () { connect(true); };
+  $('btnAny').onclick = function () { connect(false); };
   $('btnOk').onclick = confirm;
   $('btnStop').onclick = stop;
 
