@@ -688,7 +688,8 @@
 
     if (!hasBt) {
       $('diagHint').textContent = 'Usá Chrome en Android. Safari de iPhone no tiene Web Bluetooth; ahí necesitás el navegador Bluefy.';
-      $('btnAny').disabled = true;
+      $('btnSvc').disabled = true;
+      $('btnName').disabled = true;
       $('btnConn').disabled = true;
       return;
     }
